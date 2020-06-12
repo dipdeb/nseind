@@ -9,6 +9,7 @@ from pprint import pprint
 from prettytable import PrettyTable
 from xlsxwriter import Workbook
 from string import ascii_lowercase
+from multiprocessing.dummy import Pool as ThreadPool
 
 nse = Nse()
 
@@ -37,8 +38,10 @@ def show_quote(wlist):
 	t.align	= "r"
 
 	items = codes[wlist]
-	for code in items:
-		q = nse.get_quote(code)
+	pool = ThreadPool(4)
+	quotes = pool.map(nse.get_quote, items)
+
+	for q in quotes:
 		t.add_row([q['symbol'], q['open'], q['dayHigh'], q['dayLow'], q['closePrice'], 
 					q['lastPrice'], q['averagePrice'], q['previousClose'], 
 					str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
