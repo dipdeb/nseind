@@ -1,31 +1,9 @@
-[
-	{	"code": "wipro",
-		"bought": "",
-		"qty":
-		"date":
-	},
-	{
-		"code": "vedl",
-		"bought": "100.65",
-		"qty": "15",
-		"date": "03-06-20"
-	},
-	{
-		"code": "CHALET",
-		"bought": "161.7",
-		"qty": "20",
-		"date": "09-06-20"
-	},
-	{
-		"code": "AXISBANK",
-		"bought": "429.78",
-		"qty": "10",
-		"date": "03-06-20"
-	},
-	{
-		"code": "BANDHANBNK",
-		"bought": "273.2",
-		"qty": "30",
-		"date": "09-06-20"
-	}
-]
+{
+    "portfolio1": [
+        {
+            "code": "sbin",
+            "bought": "150.01",
+            "qty": "1"
+		}
+	]
+}

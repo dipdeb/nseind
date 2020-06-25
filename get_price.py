@@ -29,46 +29,70 @@ def show_top(top_type, typ):
 	print(t)
 
 def show_quote(wlist):
-	with open('watchlist.json', 'r') as f:
-		codes = json.load(f)
+	try:
+		with open('watchlist.json', 'r') as f:
+			codes = json.load(f)
+	except:
+		print('File not found')
 
 	t = PrettyTable(['Name', 'Open', 'High', 'Low', 'Close', 'LTP', 'VWAP', 
 					'PreviousPrice', '52wk H-L'])
 	t.title = "Watchlist"
 	t.align	= "r"
 
-	items = codes[wlist]
+	try:	
+		items = codes[wlist]
+	except:
+		print('key', wlist , ': not found')
+		sys.exit(1)
+		
 	pool = ThreadPool(4)
 	quotes = pool.map(nse.get_quote, items)
+	i = 0
 
 	for q in quotes:
-		t.add_row([q['symbol'], q['open'], q['dayHigh'], q['dayLow'], q['closePrice'], 
-					q['lastPrice'], q['averagePrice'], q['previousClose'], 
-					str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
-					' (' + q['cm_adj_low_dt']+')'])
+		try:
+			t.add_row([q['symbol'], q['open'], q['dayHigh'], q['dayLow'], q['closePrice'], 
+						q['lastPrice'], q['averagePrice'], q['previousClose'], 
+						str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
+						' (' + q['cm_adj_low_dt']+')'])
+		except:
+			print(items[i], ' stock not found')
+		i = i + 1
 
 	print(t)
 
-def show_portfolio(xls=False):
+def show_portfolio(portfolio, xls=False):
 	with open('portfolio.json', 'r') as f:
 		securities = json.load(f)
 
-	header = ['Name', 'Open', 'High', 'Low', 'Close', 'LTP',
-                    'PreviousPrice', '52wk H-L', 'PriceBoughtAt', 'CMP']
+	header = ['Name', 'Open', 'High', 'Low', 'Close', 
+                    '52wk H-L', 'BOUGHT', 'Total', 'CMP', 'P/L']
 	t = PrettyTable(header)
 	t.title = "Portfolio"
 
-	quotes = []
+	pool = ThreadPool(4)
+	codes = []
+	securities = securities[portfolio]
+
 	for sec in securities:
-		code = sec['code'].upper()
-		q = nse.get_quote(code)
-		quotes.append([q['symbol'], q['open'],  q['dayHigh'], q['dayLow'], q['closePrice'], q['lastPrice'], q['previousClose'], str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
-            ' (' + q['cm_adj_low_dt']+')', round(float(sec['bought'])*int(sec['qty']), 2), round(float(q['lastPrice'])*int(sec['qty']), 2)])
+		codes.append(sec['code'])
+
+	res = pool.map(nse.get_quote, codes)
+	quotes = []
+
+	i = 0
+
+	#for i in range(0, len(res)):
+	for sec in securities:
+		q = res[i]
+		quotes.append([q['symbol'], q['open'],  q['dayHigh'], q['dayLow'], q['closePrice'], str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
+            ' (' + q['cm_adj_low_dt']+')', sec['bought'], round(float(sec['bought'])*int(sec['qty']), 2), round(float(q['lastPrice'])*int(sec['qty']), 2)])
 
 		t.add_row([q['symbol'], q['open'], q['dayHigh'], q['dayLow'], q['closePrice'], 
-			q['lastPrice'], q['previousClose'], 
 			str(q['high52'])+' (' + q['cm_adj_high_dt']+') - '+str(q['low52'])+
-			' (' + q['cm_adj_low_dt']+')', round(float(sec['bought'])*int(sec['qty']), 2), round(float(q['lastPrice'])*int(sec['qty']), 2)])
+			' (' + q['cm_adj_low_dt']+')', sec['bought'], str(round(float(sec['bought'])*int(sec['qty']), 2)), round(float(q['lastPrice'])*int(sec['qty']), 2), (round(float(q['lastPrice'])*int(sec['qty']), 2))-(round(float(sec['bought'])*int(sec['qty']), 2))])
+		i = i +1
 
 	if xls is True:
 		workbook = Workbook('example.xlsx') 
@@ -96,7 +120,8 @@ def show_portfolio(xls=False):
 		worksheet.write_formula(tot_rows+1, tot_cols-1, sc) 
 
 		workbook.close() 
-	print(t)
+	#print(t)
+	print(t.get_string(sortby='P/L'))
 
 if __name__ == '__main__':
 	import argparse
@@ -104,8 +129,9 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='NSE utility ')
 	parser.add_argument("-g", "--gain", action='store_true', help="get_price.py -g")
 	parser.add_argument("-l", "--loss", action='store_true', help="commands")
-	parser.add_argument("-p", "--portfolio", nargs='?', const="f", help="get_price.py -p [xl] ; t - to create xls")
-	parser.add_argument("-q", "--quote", action='store_true', help="commands")
+	#parser.add_argument("-p", "--portfolio", nargs='?', const="f", help="get_price.py -p [xl] ; t - to create xls")
+	parser.add_argument("-p", "--portfolio", type=str, help="get_price.py -p <portfolio name>")
+	parser.add_argument("-q", "--quote", type=str, help="get_price.py -q <watchlist name>")
 	if len(sys.argv)==1:
 		parser.print_help(sys.stderr)
 		sys.exit(1)
@@ -118,10 +144,11 @@ if __name__ == '__main__':
 		show_top(nse.get_top_losers(), 'Losers')
 
 	if args.portfolio:
-		if args.portfolio == 'xl':
-			show_portfolio(True)
-		else:
-			show_portfolio()
+		fname = args.portfolio
+		show_portfolio(fname)
+		#else:
+		#	show_portfolio()
 
 	if args.quote:
-		show_quote('watchlist1')
+		watchlist = args.quote
+		show_quote(watchlist)
